@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 class RefundServiceTest {
@@ -69,6 +70,33 @@ class RefundServiceTest {
         }
         assertEquals(new BigDecimal("25.00"),
                 service.refund("remaining", charge.chargeId(), new BigDecimal("25.00")).amount());
+    }
+
+    @Test
+    void concurrentDifferentKeysCannotOverRefund() throws Exception {
+        AtomicInteger accepted = new AtomicInteger();
+        AtomicInteger rejected = new AtomicInteger();
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            CountDownLatch start = new CountDownLatch(1);
+            var futures = java.util.stream.IntStream.range(0, 2)
+                    .mapToObj(i -> executor.submit(() -> {
+                        start.await(5, TimeUnit.SECONDS);
+                        try {
+                            service.refund("key-" + i, charge.chargeId(), new BigDecimal("75.00"));
+                            accepted.incrementAndGet();
+                        } catch (IllegalArgumentException overRefund) {
+                            rejected.incrementAndGet();
+                        }
+                        return null;
+                    })).toList();
+            start.countDown();
+            for (var future : futures) {
+                future.get(5, TimeUnit.SECONDS);
+            }
+        }
+        assertEquals(1, accepted.get());
+        assertEquals(1, rejected.get());
+        service.refund("remaining", charge.chargeId(), new BigDecimal("25.00"));
     }
 
     @Test
