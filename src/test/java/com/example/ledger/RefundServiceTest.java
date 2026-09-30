@@ -116,4 +116,16 @@ class RefundServiceTest {
         assertEquals(new BigDecimal("1.00"),
                 service.refund("rounded", charge.chargeId(), new BigDecimal("1.005")).amount());
     }
+
+    @Test
+    void refundsCanExhaustChargeWithFractionalCentPrecision() {
+        RefundService preciseService = new RefundService(List.of(
+                new ChargeResult("precise", "customer-1", new BigDecimal("1.005"))));
+
+        preciseService.refund("first", "precise", new BigDecimal("0.500"));
+        assertEquals(new BigDecimal("0.505"),
+                preciseService.refund("last", "precise", new BigDecimal("0.505")).amount());
+        assertThrows(IllegalArgumentException.class,
+                () -> preciseService.refund("excess", "precise", new BigDecimal("0.001")));
+    }
 }

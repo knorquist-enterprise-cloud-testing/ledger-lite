@@ -38,9 +38,9 @@ public class RefundService {
         if (amount == null || amount.signum() <= 0) {
             throw new IllegalArgumentException("refund amount must be positive");
         }
-        BigDecimal roundedAmount = amount.setScale(2, RoundingMode.HALF_EVEN);
+        BigDecimal roundedAmount = amount.setScale(Math.max(2, originalAmount.scale()), RoundingMode.HALF_EVEN);
         if (roundedAmount.signum() <= 0) {
-            throw new IllegalArgumentException("refund amount must be at least one cent");
+            throw new IllegalArgumentException("refund amount is too small");
         }
         BigDecimal total = refundedAmounts.getOrDefault(chargeId, BigDecimal.ZERO).add(roundedAmount);
         if (total.compareTo(originalAmount) > 0) {
