@@ -56,12 +56,19 @@ class RefundServiceTest {
     @Test
     void concurrentRetryRecordsOnlyOneRefund() throws Exception {
         try (var executor = Executors.newFixedThreadPool(8)) {
+            CountDownLatch ready = new CountDownLatch(8);
             CountDownLatch start = new CountDownLatch(1);
             var futures = java.util.stream.IntStream.range(0, 8)
                     .mapToObj(i -> executor.submit(() -> {
-                        start.await(5, TimeUnit.SECONDS);
+                        ready.countDown();
+                        if (!start.await(5, TimeUnit.SECONDS)) {
+                            throw new AssertionError("Timed out waiting to start concurrent refunds");
+                        }
                         return service.refund("same-key", charge.chargeId(), new BigDecimal("75.00"));
                     })).toList();
+            if (!ready.await(5, TimeUnit.SECONDS)) {
+                throw new AssertionError("Timed out waiting for concurrent refund workers");
+            }
             start.countDown();
             RefundResult first = futures.getFirst().get(5, TimeUnit.SECONDS);
             for (var future : futures) {
