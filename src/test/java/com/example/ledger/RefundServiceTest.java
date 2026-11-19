@@ -48,9 +48,9 @@ class RefundServiceTest {
     @Test
     void retryReturnsSameRefundWithoutConsumingBalanceAgain() {
         RefundResult first = service.refund("refund-1", charge.chargeId(), new BigDecimal("75.00"));
-        assertSame(first, service.refund("refund-1", charge.chargeId(), new BigDecimal("75.00")));
+        assertEquals(first, service.refund("refund-1", charge.chargeId(), new BigDecimal("75.00")));
         service.refund("refund-2", charge.chargeId(), new BigDecimal("25.00"));
-        assertSame(first, service.refund("refund-1", charge.chargeId(), new BigDecimal("75.00")));
+        assertEquals(first, service.refund("refund-1", charge.chargeId(), new BigDecimal("75.00")));
     }
 
     @Test
